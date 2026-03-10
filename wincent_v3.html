@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recruitment Funnel Analysis — Wincent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+
+/* ============================================
+   VIEWPORT BASE
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow-x: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+
+.slide {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+:root {
+  /* Palette — cream base, 3 accents */
+  --cream:       #f5f2ec;
+  --cream-dark:  #ede9e0;
+  --paper:       #faf8f4;
+  --charcoal:    #1c1c1c;
+  --mid:         #555550;
+  --dim:         #999990;
+  --border:      rgba(28,28,28,0.1);
+  --border-med:  rgba(28,28,28,0.18);
+
+  /* 3 accents — dusty sage, warm rust, slate blue */
+  --accent-a:    #7a9e8a;   /* sage green  */
+  --accent-b:    #b5603a;   /* burnt sienna */
+  --accent-c:    #5a7a96;   /* slate blue  */
+
+  --accent-a-pale: rgba(122,158,138,0.12);
+  --accent-b-pale: rgba(181,96,58,0.1);
+  --accent-c-pale: rgba(90,122,150,0.1);
+
+  /* Type */
+  --f-serif: 'Bodoni Moda', Georgia, serif;
+  --f-sans:  'DM Sans', system-ui, sans-serif;
+
+  /* Scale */
+  --title-size:  clamp(1.8rem, 5vw,   3.8rem);
+  --h2-size:     clamp(1.2rem, 2.8vw, 2rem);
+  --h3-size:     clamp(1rem,   2vw,   1.45rem);
+  --body-size:   clamp(0.72rem, 1.25vw, 0.96rem);
+  --small-size:  clamp(0.62rem, 0.9vw,  0.78rem);
+
+  --pad:   clamp(1.2rem, 3.5vw, 3.5rem);
+  --gap:   clamp(0.5rem, 1.5vw, 1.5rem);
+  --egap:  clamp(0.25rem, 0.7vw, 0.7rem);
+
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body {
+  font-family: var(--f-sans);
+  background: #d8d4cc;
+  color: var(--charcoal);
+}
+
+/* ============================================
+   NOTEBOOK SHELL
+   ============================================ */
+.notebook {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+
+/* Hole-punch strip */
+.holes {
+  width: clamp(24px, 3.2vw, 40px);
+  background: #c8c4bc;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  padding: clamp(24px, 5vh, 56px) 0;
+  flex-shrink: 0;
+}
+.hole {
+  width: clamp(9px, 1.2vw, 14px);
+  height: clamp(9px, 1.2vw, 14px);
+  border-radius: 50%;
+  background: #b4b0a8;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+}
+
+/* Paper */
+.paper {
+  flex: 1;
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 1px 0 8px rgba(0,0,0,0.08);
+}
+
+/* Tab strip */
+.tabs {
+  width: clamp(18px, 2.2vw, 28px);
+  background: #ccc9c0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  cursor: pointer;
+  background: #ccc9c0;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  transition: background 0.2s;
+  position: relative;
+}
+.tab:hover { background: #bbb8b0; }
+.tab.cur {
+  background: var(--paper);
+  border-left: 2.5px solid var(--accent-a);
+}
+
+/* Paper header */
+.phdr {
+  padding: clamp(10px, 1.8vh, 20px) var(--pad) clamp(6px, 1vh, 10px);
+  border-bottom: 1.5px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-shrink: 0;
+}
+.phdr-section {
+  font-size: var(--small-size);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.phdr-num {
+  font-family: var(--f-serif);
+  font-size: var(--small-size);
+  color: var(--dim);
+  font-style: italic;
+}
+
+/* Paper body */
+.pbody {
+  flex: 1;
+  padding: clamp(14px, 2.5vh, 30px) var(--pad);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+  max-height: 100%;
+}
+
+/* ============================================
+   REVEAL
+   ============================================ */
+.r  { opacity:0; transform:translateY(16px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.rl { opacity:0; transform:translateX(-16px); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.rs { opacity:0; transform:scale(.95); transition: opacity .5s var(--ease), transform .5s var(--ease); }
+.slide.vis .r, .slide.vis .rl, .slide.vis .rs { opacity:1; transform:none; }
+.d1{transition-delay:.07s} .d2{transition-delay:.16s} .d3{transition-delay:.25s}
+.d4{transition-delay:.34s} .d5{transition-delay:.43s} .d6{transition-delay:.52s}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+.kicker {
+  font-size: var(--small-size);
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: clamp(6px, 1.2vh, 12px);
+}
+.kicker.a { color: var(--accent-a); }
+.kicker.b { color: var(--accent-b); }
+.kicker.c { color: var(--accent-c); }
+
+.h1 {
+  font-family: var(--f-serif);
+  font-size: var(--title-size);
+  font-weight: 700;
+  line-height: 1.06;
+  color: var(--charcoal);
+}
+.h2 {
+  font-family: var(--f-serif);
+  font-size: var(--h2-size);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--charcoal);
+  margin-bottom: clamp(10px, 2vh, 20px);
+}
+.h3 {
+  font-family: var(--f-serif);
+  font-size: var(--h3-size);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--charcoal);
+  margin-bottom: clamp(6px, 1.2vh, 12px);
+}
+.em-a { color: var(--accent-a); font-style: italic; }
+.em-b { color: var(--accent-b); font-style: italic; }
+.em-c { color: var(--accent-c); font-style: italic; }
+
+.body-txt {
+  font-size: var(--body-size);
+  color: var(--mid);
+  line-height: 1.65;
+}
+.body-txt + .body-txt { margin-top: clamp(6px, 1.2vh, 12px); }
+.body-txt strong { color: var(--charcoal); font-weight: 600; }
+
+.rule { width: 100%; height: 1px; background: var(--border); margin: clamp(8px,1.5vh,16px) 0; }
+
+/* callout */
+.callout {
+  border-left: 2.5px solid var(--accent-a);
+  background: var(--accent-a-pale);
+  padding: clamp(7px,1.3vh,13px) clamp(10px,1.8vw,16px);
+  font-size: var(--body-size);
+  color: var(--mid);
+  line-height: 1.6;
+  margin-top: clamp(8px,1.5vh,14px);
+}
+.callout.b { border-color: var(--accent-b); background: var(--accent-b-pale); }
+.callout.c { border-color: var(--accent-c); background: var(--accent-c-pale); }
+.callout strong { color: var(--charcoal); font-weight: 600; }
+
+/* ============================================
+   LAYOUT HELPERS
+   ============================================ */
+.two { display:grid; grid-template-columns:1fr 1fr; gap:clamp(14px,2.8vw,36px); align-items:start; }
+.two-wide { display:grid; grid-template-columns:1.2fr 0.8fr; gap:clamp(14px,2.8vw,36px); align-items:start; }
+.three { display:grid; grid-template-columns:1fr 1fr 1fr; gap:clamp(10px,2vw,24px); align-items:start; }
+
+/* ============================================
+   DATA TABLE
+   ============================================ */
+.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--small-size);
+}
+.dt th {
+  text-align: left;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  font-size: clamp(0.55rem, 0.78vw, 0.68rem);
+  color: var(--dim);
+  padding-bottom: clamp(5px,0.9vh,8px);
+  border-bottom: 1.5px solid var(--border-med);
+}
+.dt td {
+  padding: clamp(4px,0.7vh,7px) 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--mid);
+  vertical-align: middle;
+}
+.dt tr:last-child td { border-bottom: none; }
+.dt tr.tot td {
+  border-top: 1.5px solid var(--border-med);
+  border-bottom: none;
+  font-weight: 700;
+  color: var(--charcoal);
+  padding-top: clamp(5px,0.9vh,9px);
+}
+.dt .nm { font-weight: 600; color: var(--charcoal); }
+.dt .good { color: var(--accent-a); font-weight: 600; }
+.dt .warn { color: var(--accent-b); font-weight: 600; }
+.dt .bad  { color: #c0392b; font-weight: 600; }
+
+/* ============================================
+   STAT CARDS
+   ============================================ */
+.scards { display:flex; gap:clamp(8px,1.5vw,16px); margin-bottom:clamp(10px,2vh,18px); }
+.scard {
+  flex:1;
+  border: 1px solid var(--border-med);
+  padding: clamp(8px,1.4vw,14px);
+  position: relative;
+  background: var(--cream);
+}
+.scard::before {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0;
+  height: 2.5px;
+  background: var(--sc-accent, var(--accent-a));
+}
+.sv {
+  font-family: var(--f-serif);
+  font-size: clamp(1.4rem, 3.2vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--charcoal);
+}
+.sv.a { color: var(--accent-a); }
+.sv.b { color: var(--accent-b); }
+.sv.c { color: var(--accent-c); }
+.sv.red { color: #c0392b; }
+.sk {
+  font-size: var(--small-size);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* ============================================
+   BAR CHART
+   ============================================ */
+.bar-row {
+  display:flex; align-items:center;
+  gap: clamp(6px,1vw,10px);
+  margin-bottom: clamp(3px,0.6vh,7px);
+}
+.bar-lbl {
+  width: clamp(54px,11vw,100px);
+  font-size: var(--small-size);
+  font-weight: 600;
+  color: var(--charcoal);
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex:1;
+  height: clamp(16px,2.8vh,30px);
+  background: var(--cream-dark);
+  overflow: hidden;
+}
+.bar-fill {
+  height:100%;
+  width:0;
+  transition: width 1.1s var(--ease);
+  display:flex; align-items:center;
+  padding-left: 7px;
+  font-size: var(--small-size);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.bar-end {
+  width: clamp(44px,8vw,78px);
+  font-size: var(--small-size);
+  font-weight: 600;
+  flex-shrink: 0;
+  color: var(--mid);
+}
+.bar-end.a { color: var(--accent-a); }
+.bar-end.b { color: var(--accent-b); }
+.bar-end.red { color: #c0392b; }
+
+/* ============================================
+   FUNNEL (slide 2 — live chart)
+   ============================================ */
+.funnel-row {
+  display:flex; align-items:center;
+  gap: clamp(6px,1vw,12px);
+  margin-bottom: clamp(3px,0.55vh,7px);
+}
+.f-stage {
+  width: clamp(110px,20vw,180px);
+  font-size: var(--small-size);
+  font-weight: 600;
+  color: var(--charcoal);
+  text-align: right;
+  flex-shrink: 0;
+}
+.f-track {
+  flex:1;
+  height: clamp(20px,3.5vh,38px);
+  background: var(--cream-dark);
+  overflow: hidden;
+}
+.f-fill {
+  height:100%;
+  width:0;
+  transition: width 1.15s var(--ease);
+  display:flex; align-items:center;
+  padding-left: 8px;
+  font-size: var(--small-size);
+  font-weight: 600;
+}
+.f-drop {
+  width: clamp(72px,12vw,110px);
+  font-size: var(--small-size);
+  font-weight: 600;
+  flex-shrink: 0;
+  color: #c0392b;
+}
+.f-drop.ok { color: var(--accent-a); }
+
+/* ============================================
+   ACTION ITEM
+   ============================================ */
+.action {
+  display:flex;
+  gap: clamp(10px,1.8vw,18px);
+  padding: clamp(8px,1.4vw,14px);
+  background: var(--cream);
+  border-left: 2.5px solid var(--ai-accent, var(--accent-a));
+  margin-bottom: clamp(6px,1.1vh,12px);
+}
+.action-n {
+  font-family: var(--f-serif);
+  font-size: clamp(1.1rem,2.2vw,1.6rem);
+  font-weight: 700;
+  color: var(--ai-accent, var(--accent-a));
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+.action-body strong {
+  font-size: var(--body-size);
+  font-weight: 600;
+  color: var(--charcoal);
+  display: block;
+  margin-bottom: 3px;
+}
+.action-body span {
+  font-size: var(--small-size);
+  color: var(--mid);
+  line-height: 1.6;
+}
+
+/* ============================================
+   TITLE SLIDE SPECIFICS
+   ============================================ */
+.title-meta {
+  display:flex;
+  gap: clamp(16px,3vw,36px);
+  padding-top: clamp(12px,2.2vh,22px);
+  border-top: 1.5px solid var(--border-med);
+  margin-top: clamp(14px,2.5vh,26px);
+}
+.tmv {
+  font-family: var(--f-serif);
+  font-size: clamp(1.2rem,2.5vw,1.9rem);
+  font-weight: 700;
+  color: var(--charcoal);
+  line-height: 1;
+}
+.tmk {
+  font-size: var(--small-size);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+/* ============================================
+   PROGRESS LINE
+   ============================================ */
+.progress-line {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: var(--accent-a);
+  width: 0;
+  z-index: 200;
+  transition: width 0.35s ease;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-height: 700px) {
+  :root {
+    --pad: clamp(0.8rem, 2.5vw, 2.2rem);
+    --h2-size: clamp(1.1rem, 2.5vw, 1.7rem);
+    --gap: clamp(0.4rem, 1.2vw, 1.1rem);
+  }
+}
+@media (max-height: 600px) {
+  :root {
+    --body-size: clamp(0.65rem, 1.1vw, 0.85rem);
+    --h2-size: clamp(1rem, 2.2vw, 1.5rem);
+  }
+  .holes, .tabs { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration:.01ms!important; transition-duration:.15s!important; }
+  html { scroll-behavior: auto; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="progress-line" id="prog"></div>
+
+<!-- ============================================================
+     SLIDE 1 — TITLE
+     ============================================================ -->
+<section class="slide" id="s1">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr">
+      <span class="phdr-section">Wincent — Data Assignment</span>
+      <span class="phdr-num">01 / 13</span>
+    </div>
+    <div class="pbody" style="justify-content:flex-start;padding-top:clamp(22px,5.5vh,56px);">
+      <p class="kicker r d1">Recruitment Funnel Analysis</p>
+      <h1 class="h1 r d2">8,266 leads.<br><em style="font-style:italic;color:var(--mid);">74 hires.</em></h1>
+      <p class="body-txt r d3" style="max-width:500px;margin-top:clamp(8px,1.5vh,16px);">A data-driven assessment of pipeline efficiency, team performance, and the actions needed to close the gap.</p>
+      <div class="title-meta r d4">
+        <div><div class="tmv">0.9%</div><div class="tmk">End-to-end conversion</div></div>
+        <div><div class="tmv">6</div><div class="tmk">Recruiters</div></div>
+        <div><div class="tmv">82.2%</div><div class="tmk">Offer acceptance rate</div></div>
+        <div><div class="tmv">2</div><div class="tmk">Tasks</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t1"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 2 — OBS 1: Funnel bottleneck (live chart)
+     ============================================================ -->
+<section class="slide" id="s2">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">02 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker a r d1">Observation 1</p>
+      <h2 class="h2 r d2">One bottleneck <span class="em-a">overshadows</span> everything else</h2>
+      <div class="r d3">
+        <div class="funnel-row">
+          <span class="f-stage">Total Leads</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--accent-c);color:#fff;" data-w="100">8,266</div></div>
+          <span class="f-drop" style="color:transparent;">—</span>
+        </div>
+        <div class="funnel-row">
+          <span class="f-stage">Responded to Outreach</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--accent-a);color:#fff;" data-w="12.7">1,048</div></div>
+          <span class="f-drop">&#8722;87.3%</span>
+        </div>
+        <div class="funnel-row">
+          <span class="f-stage">Proceeded to 1st Interview</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--accent-a);color:#fff;opacity:0.8;" data-w="3.25">269</div></div>
+          <span class="f-drop">&#8722;74.3%</span>
+        </div>
+        <div class="funnel-row">
+          <span class="f-stage">Passed 1st Interview</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--accent-a);color:#fff;opacity:0.65;" data-w="1.97">163</div></div>
+          <span class="f-drop">&#8722;39.4%</span>
+        </div>
+        <div class="funnel-row">
+          <span class="f-stage">Passed 2nd Interview</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--accent-a);color:#fff;opacity:0.5;" data-w="1.09">90</div></div>
+          <span class="f-drop">&#8722;44.8%</span>
+        </div>
+        <div class="funnel-row">
+          <span class="f-stage">Accepted Offer</span>
+          <div class="f-track"><div class="f-fill" style="background:var(--charcoal);color:#fff;" data-w="0.9">74</div></div>
+          <span class="f-drop ok">82.2% close</span>
+        </div>
+      </div>
+      <div class="callout r d4">
+        The drop from total leads to responses is <strong>the single largest loss in the entire funnel at 87.3%.</strong> A further 74.8% of all leads never replied to outreach at all. Everything downstream is a secondary problem.
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t2"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 3 — OBS 2: Messaging problem not timing
+     ============================================================ -->
+<section class="slide" id="s3">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">03 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker a r d1">Observation 2</p>
+      <h2 class="h2 r d2">A <span class="em-a">messaging problem,</span> not a timing problem</h2>
+      <div class="two r d3">
+        <div>
+          <p class="body-txt"><strong>Response rates are completely flat all year.</strong> No month breaks out in either direction — no seasonal spike, no dip. This rules out timing or external factors as the root cause.</p>
+          <p class="body-txt" style="margin-top:clamp(7px,1.3vh,12px);">A consistent 1:1 ratio exists between positive responses and active rejections across every month. For every candidate who says yes, roughly one says no — a structural pattern, not coincidence.</p>
+          <p class="body-txt" style="margin-top:clamp(7px,1.3vh,12px);">Since all recruiters draw from the same sourcer's leads, <strong>lead quality is equal across the board.</strong> The only variable is how each recruiter writes and personalises their outreach.</p>
+        </div>
+        <div>
+          <div style="font-size:var(--small-size);font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:9px;">Response rate by month — all recruiters</div>
+          <div id="monthChart"></div>
+          <div style="display:flex;gap:14px;margin-top:8px;">
+            <span style="font-size:var(--small-size);font-weight:600;color:var(--accent-a);">&#9632; Positive</span>
+            <span style="font-size:var(--small-size);font-weight:600;color:var(--accent-b);">&#9632; Rejected</span>
+            <span style="font-size:var(--small-size);font-weight:600;color:var(--dim);">— 12.7% avg</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t3"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 4 — OBS 3: Intro call bottleneck
+     ============================================================ -->
+<section class="slide" id="s4">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">04 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker b r d1">Observation 3</p>
+      <h2 class="h2 r d2">The <span class="em-b">second bottleneck:</span> intro call to interview</h2>
+      <div class="two-wide r d3">
+        <div>
+          <div class="scards" style="--sc-accent:var(--accent-b);">
+            <div class="scard"><div class="sv red">74.3%</div><div class="sk">Declined interview after intro call</div></div>
+            <div class="scard"><div class="sv">269</div><div class="sk">Leads that ever reached a 1st interview out of 8,266</div></div>
+          </div>
+          <table class="dt">
+            <thead><tr><th>Recruiter</th><th>Responded</th><th>Proceeded</th><th>Declined</th></tr></thead>
+            <tbody>
+              <tr><td class="nm">Jana</td><td>301</td><td class="good">143 (47.5%)</td><td>158</td></tr>
+              <tr><td class="nm">Anna</td><td>73</td><td>27 (37.0%)</td><td>46</td></tr>
+              <tr><td class="nm">Maria</td><td>18</td><td>5 (27.8%)</td><td>13</td></tr>
+              <tr><td class="nm">Michal</td><td>178</td><td>30 (16.9%)</td><td>148</td></tr>
+              <tr><td class="nm">Peter</td><td>71</td><td>12 (16.9%)</td><td>59</td></tr>
+              <tr><td class="nm" style="color:#c0392b">Fero</td><td>407</td><td class="bad">52 (12.8%)</td><td>355</td></tr>
+              <tr class="tot"><td>Total</td><td>1,048</td><td>269 (25.7%)</td><td>779</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="callout b">
+            Converting the intro call into an interview commitment is the recruiter's core job. The team fails at it more often than not — <strong>only 1 in 4 candidates proceed.</strong>
+          </div>
+          <p class="body-txt" style="margin-top:clamp(8px,1.5vh,14px);">Combined with the outreach bottleneck, only <strong>269 out of 8,266</strong> leads ever made it to a first interview.</p>
+          <p class="body-txt" style="margin-top:clamp(7px,1.3vh,12px);">The gap between Jana (47.5%) and Fero (12.8%) on the same metric is not explained by timing or lead quality — it is a capability difference.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t4"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 5 — OBS 4: Inside the process is fine
+     ============================================================ -->
+<section class="slide" id="s5">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">05 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker a r d1">Observation 4</p>
+      <h2 class="h2 r d2">Once <span class="em-a">inside</span> the process, the team performs well</h2>
+      <div class="two r d3">
+        <div>
+          <div class="scards" style="--sc-accent:var(--accent-a);">
+            <div class="scard"><div class="sv a">82.2%</div><div class="sk">Team offer acceptance rate</div></div>
+            <div class="scard"><div class="sv">74 / 90</div><div class="sk">Accepted out of candidates who passed 2nd interview</div></div>
+          </div>
+          <div class="callout">
+            The problem is <strong>not what happens inside the process.</strong> It is getting candidates into the interview pipeline in the first place. The offer stage is a genuine team strength.
+          </div>
+        </div>
+        <div>
+          <div style="font-size:var(--small-size);font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Offer acceptance rate by recruiter</div>
+          <div class="bar-row"><span class="bar-lbl">Peter</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-a);color:#fff;" data-w="100">3/3</div></div><span class="bar-end a">100%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Maria</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-a);color:#fff;" data-w="100">2/2</div></div><span class="bar-end a">100%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Jana</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-a);color:#fff;" data-w="90.6">48/53</div></div><span class="bar-end a">90.6%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Team avg</span><div class="bar-track"><div class="bar-fill" style="background:var(--charcoal);color:#fff;" data-w="82.2">74/90</div></div><span class="bar-end">82.2%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Fero</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-b);color:#fff;" data-w="72.2">13/18</div></div><span class="bar-end b">72.2%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Anna</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-b);color:#fff;" data-w="66.7">4/6</div></div><span class="bar-end b">66.7%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Michal</span><div class="bar-track"><div class="bar-fill" style="background:#c0392b;color:#fff;" data-w="50">4/8</div></div><span class="bar-end red">50.0%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t5"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 6 — OBS 5: Volume not translating
+     ============================================================ -->
+<section class="slide" id="s6">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">06 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker b r d1">Observation 5</p>
+      <h2 class="h2 r d2">Lead volume is <span class="em-b">growing.</span> Outcomes are not.</h2>
+      <div class="two r d3">
+        <div>
+          <div style="font-size:var(--small-size);font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Monthly new leads — 2023</div>
+          <div id="leadsChart"></div>
+        </div>
+        <div>
+          <p class="body-txt"><strong>Leads grew approximately 50% from January to the August peak.</strong> Response rates stayed flat throughout the same period.</p>
+          <p class="body-txt" style="margin-top:clamp(7px,1.3vh,12px);">More leads are being fed into a funnel that is not improving. Without fixing the messaging and intro call conversion problems, adding volume produces more of the same at greater cost.</p>
+          <div class="callout b" style="margin-top:clamp(8px,1.5vh,14px);">
+            <strong>Before scaling lead volume further,</strong> the priority investment is recruiter capability — specifically outreach quality and intro call conversion. The sourcer is not the bottleneck.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t6"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 7 — OBS 6 + 7: Timing stable / re-engagement
+     ============================================================ -->
+<section class="slide" id="s7">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 1 — Key Observations</span><span class="phdr-num">07 / 13</span></div>
+    <div class="pbody">
+      <div class="two r d2">
+        <div>
+          <p class="kicker c" style="margin-bottom:6px;">Observation 6</p>
+          <h3 class="h3">Conversion time is stable — <span class="em-c">not improving</span></h3>
+          <p class="body-txt">Average time from intro call to accepted offer sits at <strong>13.2 days</strong> with no downward trend across the year.</p>
+          <p class="body-txt" style="margin-top:clamp(6px,1.1vh,10px);">Summer volatility — July at 14.7 days, August at 6.9, September spiking to 18.3 — reflects holiday availability on both sides rather than any structural process issue.</p>
+          <div class="callout c" style="margin-top:clamp(8px,1.5vh,14px);">Compress this timeline and throughput improves <strong>without sourcing a single additional lead.</strong></div>
+        </div>
+        <div>
+          <p class="kicker a" style="margin-bottom:6px;">Observation 7</p>
+          <h3 class="h3"><span class="em-a">1,034 rejections</span> are a hidden pipeline</h3>
+          <p class="body-txt">For every candidate who says yes to outreach, roughly one says no. This 1:1 ratio holds across every month of the year — it is structural, not coincidence.</p>
+          <p class="body-txt" style="margin-top:clamp(6px,1.1vh,10px);">The 1,034 active rejections are not cold leads. They read the message, engaged enough to respond, and made a decision. That is a far warmer pool than the 6,184 who never replied.</p>
+          <div class="callout" style="margin-top:clamp(8px,1.5vh,14px);">A re-engagement campaign with a different angle, different recruiter, or better timing could unlock meaningful pipeline <strong>without sourcing a single new lead.</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t7"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 8 — T2 A1: Overall output is poor
+     ============================================================ -->
+<section class="slide" id="s8">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — Team Performance Assessment</span><span class="phdr-num">08 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker b r d1">Assessment 1</p>
+      <h2 class="h2 r d2">The team's overall output is <span class="em-b">not good enough</span></h2>
+      <div class="two r d3">
+        <div>
+          <div style="font-size:var(--small-size);font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">End-to-end efficiency — accepted offers per 100 leads</div>
+          <div class="bar-row"><span class="bar-lbl">Jana</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-a);color:#fff;" data-w="100">4.8</div></div><span class="bar-end a">4.8%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Maria</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-c);color:#fff;" data-w="52">2.5</div></div><span class="bar-end c" style="color:var(--accent-c)">2.5%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Anna</span><div class="bar-track"><div class="bar-fill" style="background:#aaa;color:#fff;" data-w="12">0.6</div></div><span class="bar-end">0.6%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Peter</span><div class="bar-track"><div class="bar-fill" style="background:#aaa;color:#fff;" data-w="10">0.5</div></div><span class="bar-end">0.5%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Fero</span><div class="bar-track"><div class="bar-fill" style="background:var(--accent-b);color:#fff;" data-w="6">0.3</div></div><span class="bar-end b">0.3%</span></div>
+          <div class="bar-row"><span class="bar-lbl">Michal</span><div class="bar-track"><div class="bar-fill" style="background:#c0392b;color:#fff;" data-w="4">0.2</div></div><span class="bar-end red">0.2%</span></div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+            <div class="bar-row"><span class="bar-lbl" style="color:var(--dim)">Team avg</span><div class="bar-track"><div class="bar-fill" style="background:var(--charcoal);color:#fff;" data-w="18.75">0.9</div></div><span class="bar-end">0.9%</span></div>
+          </div>
+        </div>
+        <div>
+          <div class="callout b">
+            74 accepted offers from 8,266 leads. <strong>99 out of every 100 leads go nowhere.</strong> This is not a lead quality problem — the sourcer feeds everyone the same pool. This is a recruiter performance problem.
+          </div>
+          <table class="dt" style="margin-top:clamp(10px,2vh,18px);">
+            <thead><tr><th>Recruiter</th><th>Leads</th><th>Hires</th><th>Rate</th></tr></thead>
+            <tbody>
+              <tr><td class="nm">Jana</td><td>990</td><td>48</td><td class="good">4.8%</td></tr>
+              <tr><td class="nm">Maria</td><td>80</td><td>2</td><td>2.5%</td></tr>
+              <tr><td class="nm">Anna</td><td>690</td><td>4</td><td>0.6%</td></tr>
+              <tr><td class="nm">Peter</td><td>566</td><td>3</td><td>0.5%</td></tr>
+              <tr><td class="nm">Fero</td><td>3,960</td><td>13</td><td class="warn">0.3%</td></tr>
+              <tr><td class="nm">Michal</td><td>1,980</td><td>4</td><td class="bad">0.2%</td></tr>
+              <tr class="tot"><td>Total</td><td>8,266</td><td>74</td><td>0.9%</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t8"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 9 — T2 A2: Jana
+     ============================================================ -->
+<section class="slide" id="s9">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — Team Performance Assessment</span><span class="phdr-num">09 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker a r d1">Assessment 2</p>
+      <h2 class="h2 r d2">Jana is the only recruiter <span class="em-a">justifying her role</span></h2>
+      <div class="two r d3">
+        <div>
+          <table class="dt">
+            <thead><tr><th>Metric</th><th>Jana</th><th>Team avg</th></tr></thead>
+            <tbody>
+              <tr><td>Response rate</td><td class="good">30.4%</td><td>12.7%</td></tr>
+              <tr><td>Intro call conversion</td><td class="good">47.5%</td><td>25.7%</td></tr>
+              <tr><td>Offer acceptance</td><td class="good">90.6%</td><td>82.2%</td></tr>
+              <tr><td>Leads per hire</td><td class="good">1 : 21</td><td>1 : 112</td></tr>
+              <tr><td>End-to-end rate</td><td class="good">4.8%</td><td>0.9%</td></tr>
+              <tr><td>Share of leads</td><td>12.0%</td><td>—</td></tr>
+              <tr><td>Share of offers</td><td class="good">64.9%</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="scards" style="--sc-accent:var(--accent-a);flex-direction:column;gap:clamp(7px,1.3vh,13px);">
+            <div class="scard"><div class="sv a">64.9%</div><div class="sk">of all accepted offers — from just 12% of leads</div></div>
+            <div class="scard"><div class="sv">4.8×</div><div class="sk">efficiency versus the team average of 0.9</div></div>
+          </div>
+          <div class="callout" style="margin-top:clamp(8px,1.5vh,14px);">
+            If the rest of the team matched Jana's conversion rate, the team would produce roughly <strong>370 accepted offers a year instead of 74.</strong> Her outperformance holds on every single day of the week — this is not timing, not luck, not lead assignment. She is simply doing the job better.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t9"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 10 — T2 A3: Fero
+     ============================================================ -->
+<section class="slide" id="s10">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — Team Performance Assessment</span><span class="phdr-num">10 / 13</span></div>
+    <div class="pbody">
+      <p class="kicker b r d1">Assessment 3</p>
+      <h2 class="h2 r d2">Fero is the <span class="em-b">most damaging</span> underperformer</h2>
+      <div class="two r d3">
+        <div>
+          <table class="dt">
+            <thead><tr><th>Metric</th><th>Fero</th><th>Jana</th></tr></thead>
+            <tbody>
+              <tr><td>Total leads</td><td class="warn">3,960</td><td>990</td></tr>
+              <tr><td>No-response rate</td><td class="bad">79.7%</td><td class="good">40.2%</td></tr>
+              <tr><td>Intro call conversion</td><td class="bad">12.8%</td><td class="good">47.5%</td></tr>
+              <tr><td>Offer acceptance</td><td class="warn">72.2%</td><td class="good">90.6%</td></tr>
+              <tr><td>Leads per hire</td><td class="bad">1 : 305</td><td class="good">1 : 21</td></tr>
+              <tr><td>End-to-end rate</td><td class="bad">0.3%</td><td class="good">4.8%</td></tr>
+              <tr><td>Share of leads</td><td class="warn">47.9%</td><td>12.0%</td></tr>
+              <tr><td>Share of offers</td><td class="bad">17.6%</td><td class="good">64.9%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="scards" style="--sc-accent:var(--accent-b);flex-direction:column;gap:clamp(7px,1.3vh,13px);">
+            <div class="scard"><div class="sv red">&#8722;30.3%</div><div class="sk">Gap between lead share and offer share</div></div>
+            <div class="scard"><div class="sv">16×</div><div class="sk">Jana's efficiency rate vs Fero's</div></div>
+          </div>
+          <div class="callout b" style="margin-top:clamp(8px,1.5vh,14px);">
+            Nearly <strong>80% of his 3,960 reach-outs go completely unanswered.</strong> 87.2% of those who did respond still declined to interview after the intro call. This is not a workload issue. It is a fundamental capability gap that needs to be addressed directly.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t10"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 11 — T2 A4+5+6: Michal, Anna/Peter, Maria
+     ============================================================ -->
+<section class="slide" id="s11">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — Team Performance Assessment</span><span class="phdr-num">11 / 13</span></div>
+    <div class="pbody">
+      <div class="three r d2">
+        <div>
+          <p class="kicker b" style="margin-bottom:5px;">Assessment 4</p>
+          <h3 class="h3">Michal — <span class="em-b">wasted pipeline</span></h3>
+          <p class="body-txt">1,980 leads, 4 hires, <strong style="color:#c0392b;">0.2 per 100</strong> — the lowest efficiency score on the team. 81.3% no-response rate.</p>
+          <p class="body-txt" style="margin-top:clamp(5px,1vh,9px);">Together, Fero and Michal consume <strong>72% of all leads</strong> and produce just <strong>23% of accepted offers.</strong></p>
+          <div class="callout b" style="margin-top:clamp(7px,1.3vh,12px);">Michal's 50% offer rejection rate is the worst on the team and warrants a separate conversation about how roles are being presented at interview stage.</div>
+        </div>
+        <div>
+          <p class="kicker" style="color:var(--dim);margin-bottom:5px;">Assessment 5</p>
+          <h3 class="h3">Anna &amp; Peter — <span style="font-style:italic;color:var(--mid);">something to build on</span></h3>
+          <p class="body-txt">Both convert at 0.5–0.6 per 100 leads — below benchmark but not without signal.</p>
+          <p class="body-txt" style="margin-top:clamp(5px,1vh,9px);"><strong>Anna's 37% intro call conversion</strong> is second best after Jana. Her problem is top-of-funnel. Fix the messaging, and her output likely moves meaningfully.</p>
+          <p class="body-txt" style="margin-top:clamp(5px,1vh,9px);"><strong>Peter's active rejection rate</strong> is the second highest after Jana — his outreach is being read. A better message framework could be the unlock.</p>
+        </div>
+        <div>
+          <p class="kicker c" style="margin-bottom:5px;">Assessment 6</p>
+          <h3 class="h3">Maria — <span class="em-c">too small to judge</span></h3>
+          <p class="body-txt">80 leads is not enough for firm conclusions. Her efficiency score of 2.5 looks strong — second only to Jana — but needs to hold at scale.</p>
+          <p class="body-txt" style="margin-top:clamp(5px,1vh,9px);">Her offer acceptance rate of 100% on a small sample is also encouraging, but statistically fragile.</p>
+          <div class="callout c" style="margin-top:clamp(7px,1.3vh,12px);"><strong>Give Maria materially more volume now.</strong> If her numbers hold over two quarters, consider a more senior role.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t11"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 12 — Actions 1–3
+     ============================================================ -->
+<section class="slide" id="s12">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — What I Would Do Next</span><span class="phdr-num">12 / 13</span></div>
+    <div class="pbody">
+      <h2 class="h2 r d1">Actions <span class="em-a">1 — 3</span></h2>
+      <div class="r d2">
+        <div class="action" style="--ai-accent:var(--accent-a);">
+          <span class="action-n">01</span>
+          <div class="action-body">
+            <strong>Pull apart Jana's playbook and make it the team standard</strong>
+            <span>Document her outreach messages, intro call approach, and how she handles objections. Her outperformance holds every single day of the week — that knowledge should not stay trapped as individual know-how.</span>
+          </div>
+        </div>
+        <div class="action" style="--ai-accent:var(--accent-c);">
+          <span class="action-n">02</span>
+          <div class="action-body">
+            <strong>Use AI to operationalise Jana's style at scale</strong>
+            <span>Build a lightweight wrapper on an existing foundation model, pre-loaded with Jana's messages, tone, and framing. Recruiters generate first drafts without technical skill. Removes dependency on individual writing ability and scales the approach immediately.</span>
+          </div>
+        </div>
+        <div class="action" style="--ai-accent:var(--accent-b);">
+          <span class="action-n">03</span>
+          <div class="action-body">
+            <strong>Build a structured follow-up and re-engagement process</strong>
+            <span>6,184 leads left unanswered, 1,034 said no — with no follow-up track behind either group. Every lead should get 2–3 follow-ups before being marked inactive. The 1,034 active rejections need their own track: different angle, different recruiter, or different timing.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t12"></div>
+</div>
+</section>
+
+<!-- ============================================================
+     SLIDE 13 — Actions 4–6
+     ============================================================ -->
+<section class="slide" id="s13">
+<div class="notebook">
+  <div class="holes"><div class="hole"></div><div class="hole"></div><div class="hole"></div><div class="hole"></div></div>
+  <div class="paper">
+    <div class="phdr"><span class="phdr-section">Task 2 — What I Would Do Next</span><span class="phdr-num">13 / 13</span></div>
+    <div class="pbody">
+      <h2 class="h2 r d1">Actions <span class="em-b">4 — 6</span></h2>
+      <div class="r d2">
+        <div class="action" style="--ai-accent:var(--accent-b);">
+          <span class="action-n">04</span>
+          <div class="action-body">
+            <strong>Give Fero and Michal a defined improvement window — with consequences</strong>
+            <span>One to two quarters to show real movement on response rate and intro call conversion, with the playbook and AI tooling available. Reduce their volume targets short-term and shift the focus to quality. If there is no meaningful progress, make the call. Carrying 72% of pipeline at sub-0.3% conversion is not a sustainable position.</span>
+          </div>
+        </div>
+        <div class="action" style="--ai-accent:var(--accent-a);">
+          <span class="action-n">05</span>
+          <div class="action-body">
+            <strong>Re-assess Anna, Peter, and Maria after one to two quarters on the new playbook</strong>
+            <span>Anna's intro call strength and Peter's read rate both suggest the top-of-funnel fix alone could move their numbers. Maria needs materially more volume now — her efficiency score is too strong to leave her on 80 leads. If her numbers hold at scale, consider a more senior role.</span>
+          </div>
+        </div>
+        <div class="action" style="--ai-accent:var(--accent-c);">
+          <span class="action-n">06</span>
+          <div class="action-body">
+            <strong>Reaffirm that the sourcer is not the problem</strong>
+            <span>The sourcer delivered a volume increase across the year. The team failed to convert it. Investing in more leads before fixing recruiter capability will produce more waste, not more hires. The constraint is outreach quality and intro call conversion.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs" id="t13"></div>
+</div>
+</section>
+
+<script>
+/* ============================================
+   TAB STRIP BUILDER
+   ============================================ */
+const TOTAL = 13;
+const slides = document.querySelectorAll('.slide');
+
+for (let si = 1; si <= TOTAL; si++) {
+  const strip = document.getElementById('t' + si);
+  if (!strip) continue;
+  for (let ti = 0; ti < TOTAL; ti++) {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (ti === si - 1 ? ' cur' : '');
+    // Subtle: active tab is paper-white, others are the same grey strip
+    if (ti !== si - 1) tab.style.opacity = '0.6';
+    tab.dataset.idx = ti;
+    tab.addEventListener('click', () => goTo(ti));
+    strip.appendChild(tab);
+  }
+}
+
+/* ============================================
+   SLIDE CONTROLLER
+   ============================================ */
+let current = 0;
+
+function goTo(idx) {
+  idx = Math.max(0, Math.min(TOTAL - 1, idx));
+  slides[idx].scrollIntoView({ behavior: 'smooth' });
+}
+
+// Intersection observer
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('vis');
+      current = Array.from(slides).indexOf(e.target);
+      document.getElementById('prog').style.width =
+        ((current + 1) / TOTAL * 100) + '%';
+      animateBars(e.target);
+    }
+  });
+}, { threshold: 0.45 });
+
+slides.forEach(s => obs.observe(s));
+
+function animateBars(slide) {
+  slide.querySelectorAll('.bar-fill[data-w], .f-fill[data-w]').forEach(b => {
+    setTimeout(() => { b.style.width = b.dataset.w + '%'; }, 220);
+  });
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (['ArrowDown','ArrowRight',' '].includes(e.key)) { e.preventDefault(); goTo(current + 1); }
+  if (['ArrowUp','ArrowLeft'].includes(e.key))        { e.preventDefault(); goTo(current - 1); }
+});
+
+// Touch nav
+let ty0 = 0;
+document.addEventListener('touchstart', e => { ty0 = e.touches[0].clientY; }, { passive: true });
+document.addEventListener('touchend',   e => {
+  const dy = ty0 - e.changedTouches[0].clientY;
+  if (Math.abs(dy) > 45) goTo(dy > 0 ? current + 1 : current - 1);
+}, { passive: true });
+
+/* ============================================
+   MONTHLY RESPONSE CHART (slide 3)
+   ============================================ */
+const mData = [
+  { m:'Jan', p:11.0, r:13.4 }, { m:'Feb', p:12.3, r:13.8 },
+  { m:'Mar', p:13.8, r:11.6 }, { m:'Apr', p:12.7, r:12.4 },
+  { m:'May', p:11.1, r:11.5 }, { m:'Jun', p:11.8, r:14.0 },
+  { m:'Jul', p:11.3, r:12.0 }, { m:'Aug', p:13.5, r:12.7 },
+  { m:'Sep', p:13.6, r:12.3 }, { m:'Oct', p:13.2, r:13.2 }
+];
+const mc = document.getElementById('monthChart');
+if (mc) {
+  mData.forEach(d => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:4px;font-size:clamp(0.55rem,0.82vw,0.7rem);';
+    const scale = 5.2;
+    row.innerHTML = `
+      <span style="width:26px;flex-shrink:0;color:var(--dim);font-weight:600;">${d.m}</span>
+      <div style="width:${d.p*scale}px;height:10px;background:var(--accent-a);opacity:0.75;min-width:2px;border-radius:1px;"></div>
+      <span style="width:34px;color:var(--accent-a);font-weight:600;">${d.p}%</span>
+      <div style="width:${d.r*scale}px;height:10px;background:var(--accent-b);opacity:0.65;min-width:2px;border-radius:1px;"></div>
+      <span style="color:var(--accent-b);font-weight:600;">${d.r}%</span>
+    `;
+    mc.appendChild(row);
+  });
+}
+
+/* ============================================
+   MONTHLY LEADS CHART (slide 6)
+   ============================================ */
+const lData = [
+  { m:'Jan', v:694 },{ m:'Feb', v:651 },{ m:'Mar', v:740 },
+  { m:'Apr', v:769 },{ m:'May', v:784 },{ m:'Jun', v:842 },
+  { m:'Jul', v:799 },{ m:'Aug', v:1044},{ m:'Sep', v:1034},{ m:'Oct', v:909 }
+];
+const maxL = Math.max(...lData.map(d => d.v));
+const lc = document.getElementById('leadsChart');
+if (lc) {
+  lData.forEach(d => {
+    const pct = (d.v / maxL * 100).toFixed(1);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:clamp(0.55rem,0.82vw,0.7rem);';
+    row.innerHTML = `
+      <span style="width:26px;flex-shrink:0;color:var(--dim);font-weight:600;">${d.m}</span>
+      <div style="flex:1;height:clamp(12px,2.2vh,20px);background:var(--cream-dark);overflow:hidden;border-radius:1px;">
+        <div class="bar-fill" data-w="${pct}"
+             style="background:var(--accent-c);color:#fff;height:100%;width:0;transition:width 1.1s var(--ease);display:flex;align-items:center;padding-left:6px;font-size:clamp(0.52rem,0.78vw,0.65rem);font-weight:600;"></div>
+      </div>
+      <span style="width:36px;flex-shrink:0;font-weight:600;color:var(--mid);">${d.v}</span>
+    `;
+    lc.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
